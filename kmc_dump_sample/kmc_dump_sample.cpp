@@ -76,7 +76,6 @@ int _tmain(int argc, char* argv[])
 	}
 
 	input_file_name1 = std::string(argv[i++]);
-	input_file_name2 = std::string(argv[i++]);
 	output_file_name = std::string(argv[i]);
 
 	// if((out_file = fopen (output_file_name.c_str(),"wb")) == NULL)
@@ -90,16 +89,74 @@ int _tmain(int argc, char* argv[])
 	//------------------------------------------------------------------------------
 	// Open kmer database for listing and print kmers within min_count and max_count
 	//------------------------------------------------------------------------------
+	// Get Histogram
+	// if (!kmer_data_base1.OpenForListing(input_file_name1))
+	// {
+	// 	print_info();
+	// 	return EXIT_FAILURE ;
+	// }
+	// else
+	// {
+	// 	uint32 _kmer_length1;
+	// 	uint32 _mode1;
+	//
+	// 	{
+	// 		uint32 _counter_size;
+	// 		uint32 _lut_prefix_length;
+	// 		uint32 _signature_len;
+	// 		uint32 _min_count;
+	// 		uint64 _max_count;
+	// 		uint64 _total_kmers;
+	// 		kmer_data_base1.Info(_kmer_length1, _mode1, _counter_size, _lut_prefix_length, _signature_len, _min_count, _max_count, _total_kmers);
+	// 	}
+	// 	std::cout << _kmer_length1 << "-mers\n";
+	//
+	// 	if(min_count_to_set)
+	// 	if (!(kmer_data_base1.SetMinCount(min_count_to_set)))
+	// 			return EXIT_FAILURE;
+	// 	if(max_count_to_set)
+	// 	if (!(kmer_data_base1.SetMaxCount(max_count_to_set)))
+	// 			return EXIT_FAILURE;
+	//
+	// 	uint32 c1;
+	// 	CKmerAPI kmer_object1(_kmer_length1);
+	// 	std::string kmer1;
+	//
+	// 	uint64_t hist[10000] = {0};
+	//
+	// 	while (kmer_data_base1.ReadNextKmer(kmer_object1, c1))
+	// 	{
+	// 		kmer_object1.to_string(kmer1);
+	//
+	// 		if (c1 >= 10000)
+	// 			c1 = 9999;
+	//
+	// 		hist[c1]++;
+	// 	}
+	//
+	// 	for (uint32_t i = 0; i < 10000; ++i)
+	// 		std::cout << i << '\t' << hist[i] << '\n';
+	//
+	// 	// fclose(out_file);
+	// 	kmer_data_base1.Close();
+	// }
 
-	if (!kmer_data_base1.OpenForListing(input_file_name1) || !kmer_data_base2.OpenForListing(input_file_name2))
+	// TODO: read fastq.gz file with SeqAn3
+	// std::vector<uint32> counters1, counters2;
+	// kmer_data_base1.GetCountersForRead_kmc2(std::string read, counters1);
+	// kmer_data_base2.GetCountersForRead_kmc2(std::string read, counters2);
+	uint32_t noMatches1 = std::count_if(counters1.begin(), counters1.end(), [](uint32 i){ return i < 5 && i < 45; });
+	uint32_t noMatches2 = std::count_if(counters2.begin(), counters2.end(), [](uint32 i){ return i < 5 && i < 45; });
+
+	if (!kmer_data_base1.OpenForRA(input_file_name1))
 	{
 		print_info();
 		return EXIT_FAILURE ;
 	}
 	else
 	{
-		uint32 _kmer_length1, _kmer_length2;
-		uint32 _mode1, _mode2;
+		uint32 _kmer_length1;
+		uint32 _mode1;
 
 		{
 			uint32 _counter_size;
@@ -109,124 +166,32 @@ int _tmain(int argc, char* argv[])
 			uint64 _max_count;
 			uint64 _total_kmers;
 			kmer_data_base1.Info(_kmer_length1, _mode1, _counter_size, _lut_prefix_length, _signature_len, _min_count, _max_count, _total_kmers);
-			kmer_data_base2.Info(_kmer_length2, _mode2, _counter_size, _lut_prefix_length, _signature_len, _min_count, _max_count, _total_kmers);
-
-			if (_mode1 != _mode2 || _kmer_length1 != _kmer_length2)
-				exit(42);
 		}
-
-
+		std::cout << _kmer_length1 << "-mers\n";
 
 		if(min_count_to_set)
-		if (!(kmer_data_base1.SetMinCount(min_count_to_set)) || !(kmer_data_base2.SetMinCount(min_count_to_set)))
+		if (!(kmer_data_base1.SetMinCount(min_count_to_set)))
 				return EXIT_FAILURE;
 		if(max_count_to_set)
-		if (!(kmer_data_base1.SetMaxCount(max_count_to_set)) || !(kmer_data_base2.SetMaxCount(max_count_to_set)))
+		if (!(kmer_data_base1.SetMaxCount(max_count_to_set)))
 				return EXIT_FAILURE;
 
-		// if (_mode1) //quake compatible mode
-		// {
-		// 	float counter;
-		// 	while (kmer_data_base.ReadNextKmer(kmer_object, counter))
-		// 	{
-		// 		kmer_object.to_string(str);
-		// 		// fprintf(out_file, "%s\t%f\n", str.c_str(), counter);
-		// 		std::cout << str.c_str() << '\t' << counter << std::endl;
-		// 	}
-		// }
-		// else
-		{
-			uint32 c1, c2;
-			CKmerAPI kmer_object1(_kmer_length1), kmer_object2(_kmer_length2);
-			std::string kmer1, kmer2;
+		uint32 c1;
+		CKmerAPI kmer_object1(_kmer_length1);
+		std::string kmer1;
 
-			bool db1_empty = !kmer_data_base1.ReadNextKmer(kmer_object1, c1);
-			kmer_object1.to_string(kmer1);
-			bool db2_empty = !kmer_data_base2.ReadNextKmer(kmer_object2, c2);
-			kmer_object2.to_string(kmer2);
+		kmer1 = "AACG";
+		std::cout << kmer1 << '\n';
+		kmer_object1.from_string(kmer1.c_str());
+		if (kmer_data_base1.CheckKmer(kmer_object1, c1))
+			std::cout << "Found: " << c1 << '\n';
+		else
+			std::cout << "Not found!\n";
 
-			uint64_t no_equal = 0;
-
-			uint64_t no_not_equal = 0;
-			uint64_t sum_not_equal = 0;
-
-			uint64_t no_only_in_db1 = 0;
-			uint64_t sum_only_in_db1 = 0;
-
-			uint64_t no_only_in_db2 = 0;
-			uint64_t sum_only_in_db2 = 0;
-
-			while (!db1_empty || !db2_empty)
-			{
-				if (kmer1 == kmer2) // TODO: compare hashes
-				{
-					if (c1 == c2)
-						++no_equal;
-					else
-					{
-						++no_not_equal;
-						sum_not_equal += std::max(c1, c2) - std::min(c1, c2);
-					}
-
-					// std::cout << kmer1 << '\n';
-					db1_empty = !kmer_data_base1.ReadNextKmer(kmer_object1, c1);
-					kmer_object1.to_string(kmer1);
-					db2_empty = !kmer_data_base2.ReadNextKmer(kmer_object2, c2);
-					kmer_object2.to_string(kmer2);
-				}
-				else if (kmer1 > kmer2)
-				{
-					// k-mer only occurs in DB2 ('c2' times)
-					++no_only_in_db2;
-					sum_only_in_db2 += c2;
-
-					// std::cout << kmer2 << '\n';
-					db2_empty = !kmer_data_base2.ReadNextKmer(kmer_object2, c2);
-					kmer_object2.to_string(kmer2);
-				}
-				else // if (kmer1 < kmer2)
-				{
-					// k-mer only occurs in DB1 ('c1' times)
-					++no_only_in_db1;
-					sum_only_in_db1 += c1;
-
-					// std::cout << kmer1 << '\n';
-					db1_empty = !kmer_data_base1.ReadNextKmer(kmer_object1, c1);
-					kmer_object1.to_string(kmer1);
-				}
-
-				if (db1_empty)
-					kmer1 = std::string(_kmer_length1, 'Z');
-				if (db2_empty)
-					kmer2 = std::string(_kmer_length2, 'Z');
-			}
-
-			std::cout <<
-				"k-mer      : " << _kmer_length1 << '\n' <<
-				"equal      : " << no_equal << '\n' <<
-				"not equal  : " << no_not_equal << " (" << (1.0d * sum_not_equal / no_not_equal) << ")" << '\n' <<
-				"only in db1: " << no_only_in_db1 << " (" << (1.0d * sum_only_in_db1 / no_only_in_db1) << ")" << '\n' <<
-				"only in db2: " << no_only_in_db2 << " (" << (1.0d * sum_only_in_db2 / no_only_in_db2) << ")" << '\n';
-
-			// while (kmer_data_base1.ReadNextKmer(kmer_object1, counter))
-			// {
-			// 	std::cout << str.c_str() << '\t' << counter << std::endl;
-			// 	// fprintf(out_file, "%s\t%u\n", str.c_str(), counter);
-			// }
-			// std::cout << "------------------------------------------------\n";
-			// while (kmer_data_base2.ReadNextKmer(kmer_object2, counter))
-			// {
-			// 	kmer_object2.to_string(str);
-			// 	std::cout << str.c_str() << '\t' << counter << std::endl;
-			// 	// fprintf(out_file, "%s\t%u\n", str.c_str(), counter);
-			// }
-		}
-
-
-		// fclose(out_file);
 		kmer_data_base1.Close();
-		kmer_data_base2.Close();
 	}
+
+	// bool CKMCFile::GetCountersForRead_kmc2(const std::string& read, std::vector<uint32>& counters)
 
 	return EXIT_SUCCESS;
 }
