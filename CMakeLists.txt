@@ -33,7 +33,7 @@ add_executable (kmc_keep_unique kmc_dump_sample/kmc_keep_unique.cpp)
 add_executable (kmc_remove_Ns kmc_dump_sample/kmc_remove_Ns.cpp)
 #add_executable (kmc kmer_counter/kmer_counter.cpp kmer_counter/mmer.cpp kmer_counter/mem_disk_file.cpp kmer_counter/rev_byte.cpp kmer_counter/bkb_writer.cpp kmer_counter/cpu_info.cpp kmer_counter/bkb_reader.cpp kmer_counter/fastq_reader.cpp kmer_counter/timer.cpp kmer_counter/develop.cpp kmer_counter/kb_completer.cpp kmer_counter/kb_storer.cpp kmer_counter/kmer.cpp kmer_counter/splitter.cpp kmer_counter/kb_collector.cpp kmer_counter/raduls_sse2.cpp kmer_counter/raduls_sse41.cpp kmer_counter/raduls_avx2.cpp kmer_counter/raduls_avx.cpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -m64 -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -std=c++14 -lz -lbz2 ${SEQAN_CXX_FLAGS}") #  -fsanitize=undefined
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3 -m64 -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -std=c++14 -lz -lbz2 -fopenmp ${SEQAN_CXX_FLAGS}") #  -fsanitize=undefined
 
 # target_link_libraries (kmc_dump_sample ${SEQAN_LIBRARIES})
 #target_link_libraries (kmc_tools seqan3::seqan3)
