@@ -103,7 +103,7 @@ template<unsigned SIZE> class CTools
 
 				for (uint32 i = 0; i < bundles.size(); ++i)
 				{
-					bundles[i]->Insert(tmp_bundle.TopKmer(), tmp_bundle.TopCounter());
+					bundles[i]->Insert(tmp_bundle.TopKmer(), tmp_bundle.TopCounter()); // TODO !!!!!
 					if (bundles[i]->Full())
 					{
 						kmc_db_writers[i]->MultiOptputAddResultPart(*bundles[i]);
