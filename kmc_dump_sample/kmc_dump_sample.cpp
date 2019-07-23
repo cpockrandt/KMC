@@ -150,13 +150,15 @@ int _tmain(int argc, char* argv[])
 
     sequence_file_input fin1{reads_child_path1}, fin2{reads_child_path2};
     auto chunks1 = fin1 // | std::view::transform([] (auto record) { return get<field::SEQ>(record); } )
-                           | ranges::view::chunk(3'000'000);
+                           | ranges::view::chunk(1'000'000);
     auto chunks2 = fin2 // | std::view::transform([] (auto record) { return get<field::SEQ>(record); } )
-                           | ranges::view::chunk(3'000'000);
+                           | ranges::view::chunk(1'000'000);
 
     std::vector<typename sequence_file_input<>::record_type> chunks_container1, chunks_container2;
-    chunks_container1.reserve(3'000'000);
-    chunks_container2.reserve(3'000'000);
+    chunks_container1.reserve(1'000'000);
+    chunks_container2.reserve(1'000'000);
+
+    std::cout << std::fixed << std::setprecision(2);
 
     paired_sequence_file_output // fout_common{out_dir / "common"},
                                 fout_father_only{out_dir / "father_only"},
@@ -201,8 +203,7 @@ int _tmain(int argc, char* argv[])
         #pragma omp parallel for num_threads(threads)
         for (uint64_t id = 0; id < chunks_container1.size(); ++id)
         {
-            uint8_t mo{0}, fo{0};
-            uint16_t fo_mo_switches{0};
+            uint16_t mo{0}, fo{0}, fo_mo_switches{0};
             fo_mo_state last_fo_mo{fo_mo_state::NONE};
 
             auto const & read1{chunks_container1[id]}, read2{chunks_container2[id]};
@@ -214,7 +215,7 @@ int _tmain(int argc, char* argv[])
                 auto & counter = counters[omp_get_thread_num()];
                 kmc_db.GetCountersForRead(read_str, counter);
 
-                for (uint32_t i = 0; i < counter.size(); ++i)
+                for (uint32_t i = 0; i < read_str.size() - kmer_length + 1; ++i)
                 {
                     if (counter[i] == 2)
                     {
@@ -252,14 +253,6 @@ int _tmain(int argc, char* argv[])
                     fout_father_only.push_back(read1, read2);
                 }
             }
-            // else if (mo == 0 && fo == 0)
-            // {
-            //     // #pragma omp critical(common)
-            //     // {
-            //     //     ++global_common;
-            //     //     // fout_common.push_back(read1, read2);
-            //     // }
-            // }
             else if (mo > 0 && fo > 0)
             {
                 if (fo_mo_switches == 1)
@@ -280,24 +273,33 @@ int _tmain(int argc, char* argv[])
                     }
                 }
             }
+            // else if (mo == 0 && fo == 0)
+            // {
+            //     // #pragma omp critical(common)
+            //     // {
+            //     //     ++global_common;
+            //     //     // fout_common.push_back(read1, read2);
+            //     // }
+            // }
 
             // #pragma omp atomic
             // ++no_reads;
         }
+
         no_reads += chunks_container1.size();
-        std::cout << '.' << std::flush;
+        if (no_reads > chunks_container1.size())
+            std::cout << "\033[7A";
+
+        std::cout << "\nTotal            :\t" << no_reads << '\n';
+        std::cout << "-------------------------------------------\n";
+        uint64_t const global_common = no_reads - global_father_only - global_mother_only - global_mixed_single_switch - global_mixed_multiple_switches;
+        std::cout << "Common           :\t" << global_common << " (" << (100.0f * global_common / no_reads) << " %)\n";
+        std::cout << "Father only      :\t" << global_father_only << " (" << (100.0f * global_father_only / no_reads) << " %)\n";
+        std::cout << "Mother only      :\t" << global_mother_only << " (" << (100.0f * global_mother_only / no_reads) << " %)\n";
+        std::cout << "Single switch    :\t" << global_mixed_single_switch << " (" << (100.0f * global_mixed_single_switch / no_reads) << " %)\n";
+        std::cout << "Multiple switches:\t" << global_mixed_multiple_switches << " (" << (100.0f * global_mixed_multiple_switches / no_reads) << " %)" << std::flush;
     }
-
-    std::cout << std::fixed << std::setprecision(2);
-    std::cout << "\n\nTotal            :\t" << no_reads << '\n';
-    std::cout << "----------------------------------\n";
-
-    uint64_t const global_common = no_reads - global_father_only - global_mother_only - global_mixed_single_switch - global_mixed_multiple_switches;
-    std::cout << "Common           :\t" << global_common << " (" << (100.0f * global_common / no_reads) << " %)\n";
-    std::cout << "Father only      :\t" << global_father_only << " (" << (100.0f * global_father_only / no_reads) << " %)\n";
-    std::cout << "Mother only      :\t" << global_mother_only << " (" << (100.0f * global_mother_only / no_reads) << " %)\n";
-    std::cout << "Single switch    :\t" << global_mixed_single_switch << " (" << (100.0f * global_mixed_single_switch / no_reads) << " %)\n";
-    std::cout << "Multiple switches:\t" << global_mixed_multiple_switches << " (" << (100.0f * global_mixed_multiple_switches / no_reads) << " %)\n";
+    std::cout << '\n';
 
     // determine last row that contains non-zero values
     // uint32_t last_row = 0;
