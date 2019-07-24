@@ -64,14 +64,14 @@ using namespace seqan3;
 struct paired_sequence_file_output {
 
     using fields_type = fields<field::SEQ, field::ID, field::QUAL>;
-    using formats_type = type_list<format_fasta, format_fastq>;
+    using formats_type = type_list<format_fastq>; // format_fasta,
     using stream_char_type = char;
 
     sequence_file_output<fields_type, formats_type, stream_char_type> pe1;
     sequence_file_output<fields_type, formats_type, stream_char_type> pe2;
 
-    paired_sequence_file_output(std::filesystem::path && path): pe1(path.string() + std::string{".1.fa"}), // TODO: automatic file ending
-                                                                pe2(path.string() + std::string{".2.fa"})
+    paired_sequence_file_output(std::filesystem::path && path): pe1(path.string() + std::string{".1.fq"}), // TODO: automatic file ending
+                                                                pe2(path.string() + std::string{".2.fq"})
     {
         pe1.options.fasta_letters_per_line = 0;
         pe2.options.fasta_letters_per_line = 0;
@@ -94,6 +94,40 @@ std::string get_perc(auto && count, auto && total)
 
 enum class fo_mo_state : uint8_t { NONE = 0, FO_LAST = 1, MO_LAST = 2 };
 
+// inline void anaylse_read(auto & read, auto & counter, uint16_t & mo, uint16_t & fo, uint16_t & fo_mo_switches, fo_mo_state & last_fo_mo, bool const output_details, auto & kmc_db, uint32 const kmer_length)
+// {
+//     auto read_view = get<field::SEQ>(read) | view::to_char;
+//     auto & qual = get<field::QUAL>(read);
+//     std::string read_str(read_view.begin(), read_view.end());
+//     kmc_db.GetCountersForRead(read_str, counter);
+//
+//     qual.resize(read_str.size() - kmer_length + 1);
+//
+//     for (uint32_t i = 0; i < read_str.size() - kmer_length + 1; ++i)
+//     {
+//         if (counter[i] == 2)
+//         {
+//             ++mo;
+//             if (last_fo_mo == fo_mo_state::FO_LAST)
+//                 ++fo_mo_switches;
+//             last_fo_mo = fo_mo_state::MO_LAST;
+//             qual[i].assign_char('2');
+//         }
+//         else if (counter[i] == 1)
+//         {
+//             ++fo;
+//             if (last_fo_mo == fo_mo_state::MO_LAST)
+//                 ++fo_mo_switches;
+//             last_fo_mo = fo_mo_state::FO_LAST;
+//             qual[i].assign_char('1');
+//         }
+//         else
+//         {
+//             qual[i].assign_char('.');
+//         }
+//     }
+// }
+
 int _tmain(int argc, char* argv[])
 {
     argument_parser myparser{"Haplotype resolution", argc, argv};
@@ -102,9 +136,10 @@ int _tmain(int argc, char* argv[])
     myparser.info.short_description = "Haplotype resolution of Trios using k-mer counting.";
     myparser.info.version = "0.0.1";
 
-    float perc = 1;
-    uint32_t min = 3;
-    uint32_t threads = omp_get_max_threads();
+    bool output_details{false};
+    float perc{1.0f};
+    uint32_t min{3};
+    int threads{omp_get_max_threads()};
     std::filesystem::path kmc_path{}, reads_child_path1{}, reads_child_path2{}, out_dir{};
 
     myparser.add_positional_option(kmc_path, "Please provide the unified KMC file of the parents.");
@@ -115,6 +150,7 @@ int _tmain(int argc, char* argv[])
     myparser.add_option(out_dir, 'o', "out", "Directory to output binned reads.", option_spec::DEFAULT, output_directory_validator{});
     myparser.add_option(threads, 't', "threads", "Number of threads", option_spec::DEFAULT, arithmetic_range_validator{1, 64});
     myparser.add_option(perc, 'p', "perc", "Bin reads where every k-mer in a read has more than p/100% occurrences in a parent.", option_spec::DEFAULT);
+    myparser.add_option(output_details, 'd', "details", "Output binning details in quality string.", option_spec::DEFAULT);
 
     try
     {
@@ -167,7 +203,7 @@ int _tmain(int argc, char* argv[])
                                 fout_mixed_multiple_switches{out_dir / "mixed_multiple_switches"};
 
     std::vector<std::vector<uint32>> counters(threads);
-    for (uint32_t i = 0; i < threads; ++i)
+    for (int i = 0; i < threads; ++i)
         counters[i].reserve(250 - kmer_length + 1);
 
     auto it1{chunks1.begin()};
@@ -206,14 +242,19 @@ int _tmain(int argc, char* argv[])
             uint16_t mo{0}, fo{0}, fo_mo_switches{0};
             fo_mo_state last_fo_mo{fo_mo_state::NONE};
 
-            auto const & read1{chunks_container1[id]}, read2{chunks_container2[id]};
+            auto & read1{chunks_container1[id]}, read2{chunks_container2[id]};
+            auto & counter = counters[omp_get_thread_num()];
 
-            for (auto const & read : {read1, read2})
+            // anaylse_read(read1, counter, mo, fo, fo_mo_switches, last_fo_mo, output_details, kmc_db, kmer_length);
+            // anaylse_read(read2, counter, mo, fo, fo_mo_switches, last_fo_mo, output_details, kmc_db, kmer_length);
+            for (auto read : {&read1, &read2})
             {
-                auto read_view = get<field::SEQ>(read) | view::to_char;
+                auto read_view = get<field::SEQ>(*read) | view::to_char;
+                auto & qual = get<field::QUAL>(*read);
                 std::string read_str(read_view.begin(), read_view.end());
-                auto & counter = counters[omp_get_thread_num()];
                 kmc_db.GetCountersForRead(read_str, counter);
+
+                qual.resize(read_str.size() - kmer_length + 1);
 
                 for (uint32_t i = 0; i < read_str.size() - kmer_length + 1; ++i)
                 {
@@ -223,6 +264,7 @@ int _tmain(int argc, char* argv[])
                         if (last_fo_mo == fo_mo_state::FO_LAST)
                             ++fo_mo_switches;
                         last_fo_mo = fo_mo_state::MO_LAST;
+                        qual[i].assign_char('2');
                     }
                     else if (counter[i] == 1)
                     {
@@ -230,10 +272,19 @@ int _tmain(int argc, char* argv[])
                         if (last_fo_mo == fo_mo_state::MO_LAST)
                             ++fo_mo_switches;
                         last_fo_mo = fo_mo_state::FO_LAST;
+                        qual[i].assign_char('1');
+                    }
+                    else
+                    {
+                        qual[i].assign_char('.');
                     }
                 }
+                for (uint32_t i = read_str.size() - kmer_length + 1; i < output_details * read_str.size(); ++i)
+                {
+                    qual[i].assign_char('.');
+                }
 
-                if (mo > 0 && fo > 0 && fo_mo_switches > 1)
+                if (!output_details && mo > 0 && fo > 0 && fo_mo_switches > 1)
                     break;
             }
 
