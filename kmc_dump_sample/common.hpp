@@ -139,3 +139,79 @@ inline void loadReads(t1 & chunks_container1, t2 & it1)
     for (auto chunk_it = chunk.begin(); chunk_it != chunk.end(); chunk_it++)
         chunks_container1.emplace_back(*chunk_it);
 }
+
+inline void comp_win(auto const & qual, uint16_t const from, uint16_t const to, uint16_t & window_m, uint16_t & window_f)
+{
+    window_m = 0;
+    window_f = 0;
+    for (uint16_t i = from; i < to + 1; ++i)
+    {
+        if (qual[i] == '2'_phred42)
+            ++window_m;
+        else if (qual[i] == '1'_phred42)
+            ++window_f;
+    }
+}
+
+template <bool output_details>
+inline void analyze_read_sliding_win(auto & read, uint16_t & mo, uint16_t & fo, uint16_t & fo_mo_switches)
+{
+    auto & qual = get<field::QUAL>(read);
+
+    mo = 0;
+    fo = 0;
+    fo_mo_switches = 0;
+    fo_mo_state last_fo_mo{fo_mo_state::NONE};
+
+    uint16_t window_m{0};
+    uint16_t window_f{0};
+    comp_win(qual, 0, 30, window_m, window_f);
+    // debug_stream << "init: " << window_f << " ... " << window_m << " ... " << std::endl;
+
+    for (uint32_t i = 0; i < qual.size() - 31 + 2; ++i)
+    {
+        if (window_m >= 0.8f * 31 || window_f >= 0.8f * 31)
+        {
+            if (window_m > window_f)
+            {
+                ++mo;
+                if (last_fo_mo == fo_mo_state::FO_LAST)
+                    ++fo_mo_switches;
+                last_fo_mo = fo_mo_state::MO_LAST;
+            }
+            else
+            {
+                ++fo;
+                if (last_fo_mo == fo_mo_state::MO_LAST)
+                    ++fo_mo_switches;
+                last_fo_mo = fo_mo_state::FO_LAST;
+            }
+            i += 31 - 1; // i will be incremented by for loop!
+            comp_win(qual, i + 1, i + 1 + 31 - 1, window_m, window_f);
+            // debug_stream << "jump: " << window_f << " ... " << window_m << " ... " << std::endl;
+            continue;
+        }
+
+        if (i < qual.size() - 31 + 1)
+        {
+            // if (i == 864)
+            //     std::cout << "XXXXXXXXXXXXXx" << std::endl;
+
+            // sliding window: increment if it is moving into the window
+            if (qual[i + 31] == '2'_phred42)
+                ++window_m;
+            else if (qual[i + 31] == '1'_phred42)
+                ++window_f;
+
+            // sliding window: decrement if it is moving out of the window
+            if (qual[i] == '2'_phred42)
+                --window_m;
+            else if (qual[i] == '1'_phred42)
+                --window_f;
+            // debug_stream << "slide (" << i << "): " << window_f << " ... " << window_m << " ... " << "( " << qual[i + 31] << " " << qual[i] << " )" << std::endl;
+        }
+    }
+
+    // debug_stream << qual << std::endl << fo << " ... " << mo << " ... " << fo_mo_switches << std::endl;
+    // exit(0);
+}

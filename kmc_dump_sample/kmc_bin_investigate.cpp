@@ -8,33 +8,6 @@
 
 using namespace seqan3;
 
-template <bool output_details>
-inline void analyze_read(auto & read, uint16_t & mo, uint16_t & fo/*, uint16_t & fo_mo_switches*/)
-{
-    // auto read_view = get<field::SEQ>(read) | view::to_char;
-    auto & qual = get<field::QUAL>(read);
-    // std::string read_str(read_view.begin(), read_view.end());
-
-    mo = 0;
-    fo = 0;
-
-    for (uint32_t i = 1; i < qual.size(); ++i)
-    {
-        if (qual[i] == 2 && qual[i - 1] == 2)
-        {
-            ++mo;
-            if (i == 1 || qual[i - 2] != 2) // count the first in a series as well
-                ++mo;
-        }
-        else if (qual[i] == 1 && qual[i - 1] == 1)
-        {
-            ++fo;
-            if (i == 1 || qual[i - 2] != 1) // count the first in a series as well
-                ++fo;
-        }
-    }
-}
-
 template <typename output_t>
 inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, std::filesystem::path const & out_dir,
                 auto & kmc_db, auto & kmc_father, auto & kmc_mother,
@@ -48,10 +21,10 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
     uint64_t no_reads = 0;
     uint64_t global_father_only = 0;
     uint64_t global_mother_only = 0;
-    // uint64_t global_mixed_single_switch = 0;
+    uint64_t global_mixed_single_switch = 0;
     uint64_t global_mixed_multiple_switches = 0;
 
-    sequence_file_input fin1{p1, seqan3::format_fastq{}};
+    sequence_file_input fin1{p1/*, seqan3::format_fastq{}*/};
     auto chunks1 = fin1 | ranges::view::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container1;
     chunks_container1.reserve(10'000);
@@ -59,7 +32,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 
     if constexpr (!paired_end)
         p2 = p1;
-    sequence_file_input fin2{p2, seqan3::format_fastq{}};
+    sequence_file_input fin2{p2/*, seqan3::format_fastq{}*/};
     auto chunks2 = fin2 | ranges::view::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container2;
     chunks_container2.reserve(10'000);
@@ -72,10 +45,10 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
         else
             loadReads(chunks_container1, it1);
 
-        #pragma omp parallel for num_threads(threads)
+        //#pragma omp parallel for num_threads(threads)
         for (uint64_t id = 0; id < chunks_container1.size(); ++id)
         {
-            uint16_t mo{0}, fo{0};//, fo_mo_switches{0};
+            uint16_t mo{0}, fo{0}, fo_mo_switches{0};
             // fo_mo_state last_fo_mo{fo_mo_state::NONE};
 
             auto & read1{chunks_container1[id]};
@@ -83,9 +56,9 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 
             // if (output_details)
             // {
-                analyze_read<true>(read1, mo, fo/*, fo_mo_switches*/);
+                analyze_read_sliding_win<true>(read1, mo, fo, fo_mo_switches);
                 if constexpr (paired_end)
-                    analyze_read<true>(read2, mo, fo/*, fo_mo_switches*/);
+                    analyze_read_sliding_win<true>(read2, mo, fo, fo_mo_switches);
             // }
             // else
             // {
@@ -113,20 +86,20 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
             }
             else if (mo > 0 && fo > 0)
             {
-                // if (fo_mo_switches == 1)
-                // {
-                //     #pragma omp critical(mixed_single_switch)
-                //     {
-                //         ++global_mixed_single_switch;
-                //     }
-                // }
-                // else
-                // {
+                if (fo_mo_switches == 1)
+                {
+                    #pragma omp critical(mixed_single_switch)
+                    {
+                        ++global_mixed_single_switch;
+                    }
+                }
+                else
+                {
                     #pragma omp critical(mixed_multiple_switches)
                     {
                         ++global_mixed_multiple_switches;
                     }
-                // }
+                }
             }
             else if (mo == 0 && fo == 0)
             {
@@ -139,7 +112,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 
         no_reads += chunks_container1.size();
         if (no_reads > chunks_container1.size())
-            std::cout << "\033[6A";
+            std::cout << "\033[7A";
 
         std::cout << "\nTotal            :\t" << no_reads << '\n';
         std::cout << "-------------------------------------------\n";
@@ -147,7 +120,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
         std::cout << "Common           :\t" << global_common << " (" << (100.0f * global_common / no_reads) << " %)\n";
         std::cout << "Father only      :\t" << global_father_only << " (" << (100.0f * global_father_only / no_reads) << " %)\n";
         std::cout << "Mother only      :\t" << global_mother_only << " (" << (100.0f * global_mother_only / no_reads) << " %)\n";
-        // std::cout << "Single switch    :\t" << global_mixed_single_switch << " (" << (100.0f * global_mixed_single_switch / no_reads) << " %)\n";
+        std::cout << "Single switch    :\t" << global_mixed_single_switch << " (" << (100.0f * global_mixed_single_switch / no_reads) << " %)\n";
         std::cout << "Multiple switches:\t" << global_mixed_multiple_switches << " (" << (100.0f * global_mixed_multiple_switches / no_reads) << " %)" << std::flush;
 
         if constexpr (paired_end)
