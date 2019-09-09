@@ -11,7 +11,7 @@ using namespace seqan3;
 template <typename output_t>
 inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, std::filesystem::path const & out_dir,
                 auto & kmc_db, auto & kmc_father, auto & kmc_mother,
-                bool const output_details*/, int const threads)
+                bool const output_details*/, int const threads, float const perc)
 {
     std::cout << std::fixed << std::setprecision(2);
 
@@ -45,7 +45,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
         else
             loadReads(chunks_container1, it1);
 
-        //#pragma omp parallel for num_threads(threads)
+        #pragma omp parallel for num_threads(threads)
         for (uint64_t id = 0; id < chunks_container1.size(); ++id)
         {
             uint16_t mo{0}, fo{0}, fo_mo_switches{0};
@@ -56,9 +56,9 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 
             // if (output_details)
             // {
-                analyze_read_sliding_win<true>(read1, mo, fo, fo_mo_switches);
+                analyze_read_sliding_win<true>(read1, mo, fo, fo_mo_switches, perc);
                 if constexpr (paired_end)
-                    analyze_read_sliding_win<true>(read2, mo, fo, fo_mo_switches);
+                    analyze_read_sliding_win<true>(read2, mo, fo, fo_mo_switches, perc);
             // }
             // else
             // {
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
     myparser.info.version = "0.0.1";
 
     bool output_details{false};
-    float perc{1.0f};
+    float perc{.8f};
     int threads{omp_get_max_threads()};
     std::filesystem::path reads_child_path{}, reads_child_path1{}, reads_child_path2{}; //, out_dir{}, kmc_path{}, ;
 
@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
 
     // myparser.add_option(out_dir, 'o', "out", "Directory to output binned reads.", option_spec::DEFAULT, output_directory_validator{});
     myparser.add_option(threads, 't', "threads", "Number of threads", option_spec::DEFAULT, arithmetic_range_validator{1, 64});
-    myparser.add_option(perc, 'p', "perc", "Bin reads where every k-mer in a read has more than p/100% occurrences in a parent.", option_spec::DEFAULT);
+    myparser.add_option(perc, 'p', "perc", "A mother/father signal is defined if at least p percent of k-mers in a window of length k contain unique k-mers belonging to monther/father.", option_spec::DEFAULT);
     myparser.add_flag(output_details, 'd', "details", "Output binning details in quality string.", option_spec::DEFAULT);
 
     try
@@ -203,9 +203,9 @@ int main(int argc, char* argv[])
     // }
 
     if (paired_end)
-        run<paired_sequence_file_output>(reads_child_path1, reads_child_path2/*, out_dir, kmc_db, kmc_father, kmc_mother, output_details*/, threads);
+        run<paired_sequence_file_output>(reads_child_path1, reads_child_path2/*, out_dir, kmc_db, kmc_father, kmc_mother, output_details*/, threads, perc);
     else
-        run<single_sequence_file_output>(reads_child_path, reads_child_path/*, out_dir, kmc_db, kmc_father, kmc_mother, output_details*/, threads);
+        run<single_sequence_file_output>(reads_child_path, reads_child_path/*, out_dir, kmc_db, kmc_father, kmc_mother, output_details*/, threads, perc);
 
     std::cout << '\n';
     return 0;

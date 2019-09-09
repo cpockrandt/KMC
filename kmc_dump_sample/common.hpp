@@ -154,7 +154,7 @@ inline void comp_win(auto const & qual, uint16_t const from, uint16_t const to, 
 }
 
 template <bool output_details>
-inline void analyze_read_sliding_win(auto & read, uint16_t & mo, uint16_t & fo, uint16_t & fo_mo_switches)
+inline void analyze_read_sliding_win(auto & read, uint16_t & mo, uint16_t & fo, uint16_t & fo_mo_switches, float const perc)
 {
     auto & qual = get<field::QUAL>(read);
 
@@ -170,7 +170,7 @@ inline void analyze_read_sliding_win(auto & read, uint16_t & mo, uint16_t & fo, 
 
     for (uint32_t i = 0; i < qual.size() - 31 + 2; ++i)
     {
-        if (window_m >= 0.8f * 31 || window_f >= 0.8f * 31)
+        if (window_m >= perc * 31 || window_f >= perc * 31)
         {
             if (window_m > window_f)
             {
