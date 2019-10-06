@@ -34,7 +34,7 @@ inline void write_qualities(auto & read, auto & counter, auto & kmc_db, uint32 c
 
 template <typename output_t>
 inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
-                auto & kmc_db, auto & kmc_father, auto & kmc_mother,
+                auto & kmc_db, auto & kmc_father, auto & kmc_mother, std::filesystem::path const & out,
                 int const threads)
 {
     uint32 kmer_length;
@@ -48,9 +48,10 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     std::cout << std::fixed << std::setprecision(2);
 
     constexpr bool paired_end{std::is_same_v<output_t, paired_sequence_file_output>};
-    std::string p_out{p1};
-    p_out.insert(static_cast<std::string>(p1).find_last_of('.'), ".qual" + std::to_string(kmer_length));
-    output_t fout_all{p_out};
+    // std::string p_out{p1};
+    // p_out.insert(static_cast<std::string>(p1).find_last_of('.'), ".qual" + std::to_string(kmer_length));
+    std::string out_str{out};
+    output_t fout_all{out_str.substr(0, out_str.find_last_of('.'))};
 
     uint64_t no_reads = 0;
 
@@ -118,7 +119,7 @@ int _tmain(int argc, char* argv[])
     myparser.info.version = "0.0.1";
 
     int threads{omp_get_max_threads()};
-    std::filesystem::path kmc_path{}, reads_child_path{}, reads_child_path1{}, reads_child_path2{};
+    std::filesystem::path kmc_path{}, reads_child_path{}, reads_child_path1{}, reads_child_path2{}, out_path{};
 
     std::filesystem::path kmc_father_path, kmc_mother_path{};
 
@@ -128,6 +129,7 @@ int _tmain(int argc, char* argv[])
     myparser.add_option(reads_child_path1, 'x', "pe1", "Please provide the read file of the child (1. PE)", option_spec::DEFAULT, input_file_validator{{"fq","fastq","gz"}});
     myparser.add_option(reads_child_path2, 'y', "pe2", "Please provide the read file of the child (2. PE)", option_spec::DEFAULT, input_file_validator{{"fq","fastq","gz"}});
     myparser.add_option(reads_child_path, 'z', "sp", "Please provide the read file of the child.", option_spec::DEFAULT, input_file_validator{{"fq","fastq","gz"}});
+    myparser.add_option(out_path, 'o', "out", "Please provide the output read file name.", option_spec::DEFAULT, output_file_validator{{"fq","fastq"}});
 
     myparser.add_option(kmc_father_path, 'f', "kmc_father", "Please provide the KMC db of the father.", option_spec::DEFAULT);
     myparser.add_option(kmc_mother_path, 'm', "kmc_mother", "Please provide the KMC db of the mother.", option_spec::DEFAULT);
@@ -179,9 +181,9 @@ int _tmain(int argc, char* argv[])
     }
 
     if (paired_end)
-        run<paired_sequence_file_output>(reads_child_path1, reads_child_path2, kmc_db, kmc_father, kmc_mother, threads);
+        run<paired_sequence_file_output>(reads_child_path1, reads_child_path2, kmc_db, kmc_father, kmc_mother, out_path, threads);
     else
-        run<single_sequence_file_output>(reads_child_path, reads_child_path, kmc_db, kmc_father, kmc_mother, threads);
+        run<single_sequence_file_output>(reads_child_path, reads_child_path, kmc_db, kmc_father, kmc_mother, out_path, threads);
 
     std::cout << '\n';
     return 0;

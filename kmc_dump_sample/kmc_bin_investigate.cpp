@@ -15,9 +15,8 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 {
     std::cout << std::fixed << std::setprecision(2);
 
-    constexpr bool paired_end{false/*std::is_same_v<output_t, paired_sequence_file_output>*/};
+    constexpr bool paired_end{std::is_same_v<output_t, paired_sequence_file_output>};
 
-    // uint64_t fo_mo[2 * (250 - kmer_length + 1) + 1][2 * (250 - kmer_length + 1) + 1] = {0};
     uint64_t no_reads = 0;
     uint64_t global_father_only = 0;
     uint64_t global_mother_only = 0;
@@ -38,6 +37,11 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
     chunks_container2.reserve(10'000);
     auto it2{chunks2.begin()};
 
+    std::filesystem::path out_dir{"/ccb/salz4-2/pocki/HAPLO_RES/illumina_invest"};
+
+    output_t fout_mixed_single_switch{out_dir / "mixed_single_switch"},
+             fout_mixed_multiple_switches{out_dir / "mixed_multiple_switches"};
+
     for (; it1 != chunks1.end(); ++it1)
     {
         if (paired_end)
@@ -49,26 +53,13 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
         for (uint64_t id = 0; id < chunks_container1.size(); ++id)
         {
             uint16_t mo{0}, fo{0}, fo_mo_switches{0};
-            // fo_mo_state last_fo_mo{fo_mo_state::NONE};
 
             auto & read1{chunks_container1[id]};
             auto & read2{chunks_container2[id]};
 
-            // if (output_details)
-            // {
-                analyze_read_sliding_win<true>(read1, mo, fo, fo_mo_switches, perc);
-                if constexpr (paired_end)
-                    analyze_read_sliding_win<true>(read2, mo, fo, fo_mo_switches, perc);
-            // }
-            // else
-            // {
-            //     analyze_read<false>(read1, mo, fo/*, fo_mo_switches*/);
-            //     if constexpr (paired_end)
-            //         analyze_read<false>(read2, mo, fo/*, fo_mo_switches*/);
-            // }
-
-            // if (!output_details && mo > 0 && fo > 0 && fo_mo_switches > 1)
-            //     break;
+            // analyze_read_sliding_win<true>(read1, mo, fo, fo_mo_switches, perc);
+            // if constexpr (paired_end)
+            //     analyze_read_sliding_win<true>(read2, mo, fo, fo_mo_switches, perc);
 
             if ((mo > 0 && fo == 0)/* || (mo > 2 && fo <= 1)*/)
             {
@@ -91,6 +82,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
                     #pragma omp critical(mixed_single_switch)
                     {
                         ++global_mixed_single_switch;
+                        fout_mixed_single_switch.push_back(read1, read2);
                     }
                 }
                 else
@@ -98,14 +90,8 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
                     #pragma omp critical(mixed_multiple_switches)
                     {
                         ++global_mixed_multiple_switches;
+                        fout_mixed_multiple_switches.push_back(read1, read2);
                     }
-                }
-            }
-            else if (mo == 0 && fo == 0)
-            {
-                #pragma omp critical(common)
-                {
-                    // ++global_common;
                 }
             }
         }
@@ -116,7 +102,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
 
         std::cout << "\nTotal            :\t" << no_reads << '\n';
         std::cout << "-------------------------------------------\n";
-        uint64_t const global_common = no_reads - global_father_only - global_mother_only /*- global_mixed_single_switch*/ - global_mixed_multiple_switches;
+        uint64_t const global_common = no_reads - global_father_only - global_mother_only - global_mixed_single_switch - global_mixed_multiple_switches;
         std::cout << "Common           :\t" << global_common << " (" << (100.0f * global_common / no_reads) << " %)\n";
         std::cout << "Father only      :\t" << global_father_only << " (" << (100.0f * global_father_only / no_reads) << " %)\n";
         std::cout << "Mother only      :\t" << global_mother_only << " (" << (100.0f * global_mother_only / no_reads) << " %)\n";
