@@ -28,6 +28,7 @@ struct program_options
     uint32_t bwt_kmer{25};
     uint8_t bwt_error{0};
     float perc{1.0};
+    float perc_low{0.5};
     int threads{omp_get_max_threads()};
 };
 
@@ -133,6 +134,12 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
     uint64_t binned_father[7] = {0};
     uint64_t binned_mother[7] = {0};
 
+    sequence_file_output fout_father {options.out_path / "father.fa"},
+			 fout_mother {options.out_path / "mother.fa"};
+
+    fout_father.options.fasta_letters_per_line = 0;
+    fout_mother.options.fasta_letters_per_line = 0;
+
     std::vector<std::vector<uint32>> counters(options.threads);
     for (int i = 0; i < options.threads; ++i)
     {
@@ -165,23 +172,29 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
                     uint32_t fo = 0, mo = 0;
                     analyse(read_str, counter, kmc_db[db_id], kmer_length[db_id], fo, mo);
 
-		    float fo_norm = fo;
-		    float mo_norm = mo;
+		    //float fo_norm = fo;
+		    //float mo_norm = mo;
 
 		    //fo_norm /= 6.5f;
-		    mo_norm *= 2.101f;
+		    //mo_norm *= 2.101f;
 
-                    if (fo_norm > mo_norm + 1) // if (fo >= 15 && mo <= 5)
+                    if (fo > mo) // if (fo >= 15 && mo <= 5)
                     {
-                	    #pragma omp critical(fo_inc)
-                        ++binned_father[db_id];
+                	#pragma omp critical(fo_inc)
+			{
+                            ++binned_father[db_id];
+			    fout_father.push_back(read);
+			}
                         break;
                     }
-                    else if (mo_norm > fo_norm + 1) // else if (mo >= 15 && fo <= 5)
+                    else if (mo > fo) // else if (mo >= 15 && fo <= 5)
                     {
-                	    #pragma omp critical(mo_inc)
-                        ++binned_mother[db_id];
-                        break;
+                	#pragma omp critical(mo_inc)
+                        {
+			    ++binned_mother[db_id];
+			    fout_mother.push_back(read);
+			}
+			break;
                     }
                 }
             }
@@ -192,6 +205,8 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
                     uint32_t mo = 0;
                     uint32_t fo = 0;
                     // fo_mo_switches = 0;
+                    uint32_t mo_ambig = 0;
+                    uint32_t fo_ambig = 0;
                     // fo_mo_state last_fo_mo{fo_mo_state::NONE};
 
                     kmc_db[db_id].GetCountersForRead(read_str, counter);
@@ -223,6 +238,13 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
                             // debug_stream << "jump: " << window_f << " ... " << window_m << " ... " << std::endl;
                             continue;
                         }
+			else if (window_m >= options.perc_low * kmer_length[db_id] || window_f >= options.perc_low * kmer_length[db_id])
+                        {
+                            if (window_m > window_f)
+                                ++mo_ambig;
+                            else
+                                ++fo_ambig;
+                        }
 
                         if (i < read_str.size() - kmer_length[db_id] + 1)
                         {
@@ -241,16 +263,22 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
                         }
                     }
 
-                    if (fo > 0 && mo == 0)
+                    if (fo > 0 && mo == 0 && mo_ambig == 0)
                     {
-                	    #pragma omp critical(fo_inc)
-                        ++binned_father[db_id];
-                        break;
+                	#pragma omp critical(fo_inc)
+			{
+                            ++binned_father[db_id];
+			    fout_father.push_back(read);
+			}
+			break;
                     }
-                    else if (mo > 0 && fo == 0)
+                    else if (mo > 0 && fo == 0 && fo_ambig == 0)
                     {
-                	    #pragma omp critical(mo_inc)
-                        ++binned_mother[db_id];
+                	#pragma omp critical(mo_inc)
+			{
+                            ++binned_mother[db_id];
+			    fout_mother.push_back(read);
+			}
                         break;
                     }
 
@@ -453,7 +481,7 @@ int _tmain(int argc, char* argv[])
 
     parser.add_option(options.reads_child_path, 'z', "sp", "Please provide the read file of the child.", option_spec::REQUIRED, input_file_validator{{"fa", "fasta", "fq","fastq","gz"}});
 
-    parser.add_option(options.out_path, 'o', "out", "Please provide the output read file name.", option_spec::DEFAULT, output_file_validator{{"fq","fastq"}});
+    parser.add_option(options.out_path, 'o', "out", "Please provide the path to the output read files.", option_spec::DEFAULT);
 
     parser.add_option(options.mode, 'm', "mode", "Select mode to run.", option_spec::REQUIRED, value_list_validator{{"window", "majority", "bwt"}});
 
@@ -461,6 +489,7 @@ int _tmain(int argc, char* argv[])
     parser.add_option(options.bwt_path, 'b', "bwt", "Path to BWT index.");
 
     parser.add_option(options.perc, 'p', "perc", "Percentage of k-mers in sliding window (only for window mode)", option_spec::DEFAULT, arithmetic_range_validator{0, 1});
+    parser.add_option(options.perc_low, 'q', "perc-lower", "Percentage of k-mers in sliding window to detect ambiguouity (only for window mode)", option_spec::DEFAULT, arithmetic_range_validator{0, 1});
     parser.add_option(options.bwt_kmer, 'l', "bwt-kmer", "k-mer size for BWT", option_spec::DEFAULT, arithmetic_range_validator{10, 250});
     parser.add_option(options.bwt_error, 'e', "bwt-error", "k-mer size for BWT", option_spec::DEFAULT, arithmetic_range_validator{0, 2});
 
