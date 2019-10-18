@@ -51,8 +51,8 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     //output_t fout_all{out_str.substr(0, out_str.find_last_of('.'))};
 
     uint64_t no_reads = 0;
-    uint64_t binned_father[7] = {0};
-    uint64_t binned_mother[7] = {0};
+    // uint64_t binned_father[7] = {0};
+    // uint64_t binned_mother[7] = {0};
     uint64_t fo_mo[2 * 250 + 1][2 * 250 + 1] = {0};
     // uint64_t fo_mo[2 * (250 - kmer_length + 1) + 1][2 * (250 - kmer_length + 1) + 1] = {0};
 
@@ -63,7 +63,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     }
 
     sequence_file_input<sequence_file_input_default_traits_dna> fin1{p1};
-    auto chunks1 = fin1 | ranges::view::chunk(10'000);
+    auto chunks1 = fin1 | ranges::views::chunk(10'000);
     std::vector<typename decltype(fin1)::record_type> chunks_container1;
     chunks_container1.reserve(10'000);
     auto it1{chunks1.begin()};
@@ -71,7 +71,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     if constexpr (!paired_end)
         p2 = p1;
     sequence_file_input<sequence_file_input_default_traits_dna> fin2{p2};
-    auto chunks2 = fin2 | ranges::view::chunk(10'000);
+    auto chunks2 = fin2 | ranges::views::chunk(10'000);
     std::vector<typename decltype(fin2)::record_type> chunks_container2;
     chunks_container2.reserve(10'000);
     auto it2{chunks2.begin()};

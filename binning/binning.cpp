@@ -79,7 +79,7 @@ inline void analyze_single_window(auto const & counter, uint16_t const from, uin
 //     }
 //
 //     sequence_file_input<sequence_file_input_default_traits_dna> fin{options.reads_child_path};
-//     auto chunks = fin | ranges::view::chunk(10'000);
+//     auto chunks = fin | ranges::views::chunk(10'000);
 //     std::vector<typename decltype(fin)::record_type> chunks_container;
 //     chunks_container.reserve(10'000);
 //     auto it{chunks.begin()};
@@ -147,7 +147,7 @@ inline void algo_kmer(program_options const & options, std::vector<CKMCFile> & k
     }
 
     sequence_file_input<sequence_file_input_default_traits_dna> fin{options.reads_child_path};
-    auto chunks = fin | ranges::view::chunk(10'000);
+    auto chunks = fin | ranges::views::chunk(10'000);
     std::vector<typename decltype(fin)::record_type> chunks_container;
     chunks_container.reserve(10'000);
     auto it{chunks.begin()};
@@ -320,7 +320,7 @@ inline void algo_bwt(program_options const & options, bwt_binner const & bwt)
     uint64_t binned_mother = 0;
 
     sequence_file_input<sequence_file_input_default_traits_dna> fin{options.reads_child_path};
-    auto chunks = fin | ranges::view::chunk(100);
+    auto chunks = fin | ranges::views::chunk(100);
     std::vector<typename decltype(fin)::record_type> chunks_container;
     chunks_container.reserve(100);
     auto it{chunks.begin()};
@@ -342,7 +342,7 @@ inline void algo_bwt(program_options const & options, bwt_binner const & bwt)
             uint32_t mo = 0;
             uint32_t fo = 0;
 
-            auto kmers = read_view | ranges::view::sliding(options.bwt_kmer);
+            auto kmers = read_view | ranges::views::sliding(options.bwt_kmer);
 
             for (auto const & kmer : kmers)
             {

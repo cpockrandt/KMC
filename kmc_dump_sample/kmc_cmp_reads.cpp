@@ -77,8 +77,8 @@ int _tmain(int argc, char* argv[])
 	uint64_t readCount2[121 + 1] = {0};
 
 	sequence_file_input reads1{reads_path1}, reads2{reads_path2};
-	// auto reads1 = fin1 | std::view::transform([] (auto record) { return get<field::SEQ>(record); } );
-	// auto reads2 = fin2 | std::view::transform([] (auto record) { return get<field::SEQ>(record); } );
+	// auto reads1 = fin1 | std::views::transform([] (auto record) { return get<field::SEQ>(record); } );
+	// auto reads2 = fin2 | std::views::transform([] (auto record) { return get<field::SEQ>(record); } );
 	std::vector<typename seqan3::sequence_file_input<>::record_type> reads1_container, reads2_container;
 
 	#pragma omp parallel num_threads(2)
@@ -123,8 +123,8 @@ int _tmain(int argc, char* argv[])
 	#pragma omp parallel for num_threads(threads)
 	for (uint64_t i = 0; i < reads1_container.size(); ++i)
 	{
-		auto read1 = get<field::SEQ>(reads1_container[i]) | view::to_char;
-		auto read2 = get<field::SEQ>(reads2_container[i]) | view::to_char;
+		auto read1 = get<field::SEQ>(reads1_container[i]) | views::to_char;
+		auto read2 = get<field::SEQ>(reads2_container[i]) | views::to_char;
 
 		#pragma omp atomic
 		++readno;

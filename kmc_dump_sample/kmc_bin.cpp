@@ -14,7 +14,7 @@ using namespace seqan3;
 template <bool output_details>
 inline void anaylse_read(auto & read, auto & counter, uint16_t & mo, uint16_t & fo, uint16_t & fo_mo_switches, fo_mo_state & last_fo_mo, auto & kmc_db, uint32 const kmer_length)
 {
-    auto read_view = get<field::SEQ>(read) | view::to_char;
+    auto read_view = get<field::SEQ>(read) | views::to_char;
     auto & qual = get<field::QUAL>(read);
     std::string read_str(read_view.begin(), read_view.end());
     kmc_db.GetCountersForRead(read_str, counter);
@@ -92,7 +92,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2, st
     }
 
     sequence_file_input fin1{p1};
-    auto chunks1 = fin1 | ranges::view::chunk(10'000);
+    auto chunks1 = fin1 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container1;
     chunks_container1.reserve(10'000);
     auto it1{chunks1.begin()};
@@ -100,7 +100,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2, st
     if constexpr (!paired_end)
         p2 = p1;
     sequence_file_input fin2{p2};
-    auto chunks2 = fin2 | ranges::view::chunk(10'000);
+    auto chunks2 = fin2 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container2;
     chunks_container2.reserve(10'000);
     auto it2{chunks2.begin()};
@@ -179,7 +179,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2, st
             //     auto & counter1 = counters1[omp_get_thread_num()];
             //     auto & counter2 = counters2[omp_get_thread_num()];
             //
-            //     auto read_view = get<field::SEQ>(read1) | view::to_char;
+            //     auto read_view = get<field::SEQ>(read1) | views::to_char;
             //     std::string read_str(read_view.begin(), read_view.end());
             //
             //     kmc_father.GetCountersForRead(read_str, counter1);

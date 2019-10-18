@@ -90,8 +90,8 @@ int main(int argc, char* argv[])
     uint64_t i = 0, j = 0, total = 0;
 	while (true)
 	{
-        // auto key1 = get<field::ID>(pe1[i]) | ranges::view::take_while([] (char c) { return c != ' '; });
-        // auto key2 = get<field::ID>(pe2[j]) | ranges::view::take_while([] (char c) { return c != ' '; });
+        // auto key1 = get<field::ID>(pe1[i]) | ranges::views::take_while([] (char c) { return c != ' '; });
+        // auto key2 = get<field::ID>(pe2[j]) | ranges::views::take_while([] (char c) { return c != ' '; });
         // {pe1.substr pe1[i].find_first_of(' ')
 
         auto & id1{get<field::ID>(pe1[i])};

@@ -44,7 +44,7 @@ inline void run(program_options const & options, CKMCFile & kmc_db)
     }
 
     sequence_file_input<sequence_file_input_default_traits_dna> fin{options.read_path};
-    auto chunks = fin | ranges::view::chunk(100);
+    auto chunks = fin | ranges::views::chunk(100);
     std::vector<typename decltype(fin)::record_type> chunks_container;
     chunks_container.reserve(100);
     auto it{chunks.begin()};

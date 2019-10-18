@@ -4,6 +4,8 @@
 #include <seqan3/io/sequence_file/all.hpp>
 #include <seqan3/search/fm_index/all.hpp>
 
+#include <seqan3/range/views/to.hpp>
+
 #include <seqan3/std/ranges>
 
 #include "bwt_binning_common.hpp"
@@ -46,7 +48,9 @@ int main(int argc, char* argv[])
     sequence_file_input fin_father{path_superreads_father/*, format_fasta{}*/};
     for (auto & rec : fin_father)
     {
-        auto seq = get<field::SEQ>(rec) | std::views::transform([](dna5 c){ return static_cast<dna4>(c); });
+        auto seq = get<field::SEQ>(rec)
+                 | std::views::transform([](dna5 c){ return static_cast<dna4>(c); })
+                 | views::to<std::vector<dna4> >;
         superreads.push_back(seq);
         superreads_bases_father_count += seq.size();
     }
@@ -56,7 +60,9 @@ int main(int argc, char* argv[])
     sequence_file_input fin_mother{path_superreads_mother/*, format_fasta{}*/};
     for (auto & rec : fin_mother)
     {
-        auto seq = get<field::SEQ>(rec) | std::views::transform([](dna5 c){ return static_cast<dna4>(c); });
+        auto seq = get<field::SEQ>(rec)
+                 | std::views::transform([](dna5 c){ return static_cast<dna4>(c); })
+                 | views::to<std::vector<dna4> >;
         superreads.push_back(seq);
         superreads_bases_mother_count += seq.size();
     }

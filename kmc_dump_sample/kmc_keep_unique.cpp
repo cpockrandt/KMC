@@ -6,7 +6,7 @@
 
 #include <seqan3/io/sequence_file/all.hpp>
 #include <seqan3/argument_parser/all.hpp>
-#include <seqan3/range/view/all.hpp>
+#include <seqan3/range/views/all.hpp>
 
 using namespace seqan3;
 
@@ -24,12 +24,12 @@ bool checkRead(auto const & read, auto const & found_kmers, std::vector<uint64_t
 	};
 
 	auto const & ranks  = get<field::SEQ>(read)
-					    | ranges::view::transform(my_rank)
-						| seqan3::view::to_rank;
+					    | ranges::views::transform(my_rank)
+						| seqan3::views::to_rank;
 	auto const & ranksC = get<field::SEQ>(read)
-						| ranges::view::transform(my_rank)
-						| seqan3::view::complement
-						| seqan3::view::to_rank; // this is just the complement, not the reverse complement!
+						| ranges::views::transform(my_rank)
+						| seqan3::views::complement
+						| seqan3::views::to_rank; // this is just the complement, not the reverse complement!
 
  	// debug_stream << "Seq    : " << get<field::SEQ>(read) << std::endl;
 	// debug_stream << "Ranks  : " << ranks << std::endl;

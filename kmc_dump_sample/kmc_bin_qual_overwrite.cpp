@@ -13,7 +13,7 @@ using namespace seqan3;
 
 inline void write_qualities(auto & read, auto & counter, auto & kmc_db, uint32 const kmer_length)
 {
-    auto read_view = get<field::SEQ>(read) | view::to_char;
+    auto read_view = get<field::SEQ>(read) | views::to_char;
     auto & qual = get<field::QUAL>(read);
     std::string read_str(read_view.begin(), read_view.end());
     kmc_db.GetCountersForRead(read_str, counter);
@@ -62,7 +62,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     }
 
     sequence_file_input fin1{p1};
-    auto chunks1 = fin1 | ranges::view::chunk(10'000);
+    auto chunks1 = fin1 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container1;
     chunks_container1.reserve(10'000);
     auto it1{chunks1.begin()};
@@ -70,7 +70,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2,
     if constexpr (!paired_end)
         p2 = p1;
     sequence_file_input fin2{p2};
-    auto chunks2 = fin2 | ranges::view::chunk(10'000);
+    auto chunks2 = fin2 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container2;
     chunks_container2.reserve(10'000);
     auto it2{chunks2.begin()};

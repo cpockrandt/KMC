@@ -24,7 +24,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
     uint64_t global_mixed_multiple_switches = 0;
 
     sequence_file_input fin1{p1/*, seqan3::format_fastq{}*/};
-    auto chunks1 = fin1 | ranges::view::chunk(10'000);
+    auto chunks1 = fin1 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container1;
     chunks_container1.reserve(10'000);
     auto it1{chunks1.begin()};
@@ -32,7 +32,7 @@ inline void run(std::filesystem::path const & p1, std::filesystem::path & p2/*, 
     if constexpr (!paired_end)
         p2 = p1;
     sequence_file_input fin2{p2/*, seqan3::format_fastq{}*/};
-    auto chunks2 = fin2 | ranges::view::chunk(10'000);
+    auto chunks2 = fin2 | ranges::views::chunk(10'000);
     std::vector<typename sequence_file_input<>::record_type> chunks_container2;
     chunks_container2.reserve(10'000);
     auto it2{chunks2.begin()};
